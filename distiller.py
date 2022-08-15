@@ -74,11 +74,10 @@ class Distiller(nn.Module):
         feat_num = len(t_feats)
         
         loss_distill = 0
-        for i in range(4):
-          TF = F.normalize(t_feats[i].pow(2).mean(1)) 
-          SF = F.normalize(s_feats[i].pow(2).mean(1)) 
-          temp = (TF - SF).pow(2).mean()
-          loss_distill += temp
+        TF = F.normalize(t_feats[5].pow(2).mean(1)) 
+        SF = F.normalize(s_feats[5].pow(2).mean(1)) 
+        temp = (TF - SF).pow(2).mean()
+        loss_distill += temp
         #print('########################################')
         #for i in range(len(t_feats)):
          # TF = F.normalize(t_feats[i].pow(2).mean(1)) 
@@ -102,7 +101,7 @@ class Distiller(nn.Module):
         #loss_distill = 0
         #loss_distill = (TF - SF).pow(2).mean()
         
-        #loss_distill2 =  torch.nn.KLDivLoss()(F.log_softmax(s_out / self.temperature, dim=1), F.softmax(t_out / self.temperature, dim=1))
+        loss_distill2 =  torch.nn.KLDivLoss()(F.log_softmax(s_out / self.temperature, dim=1), F.softmax(t_out / self.temperature, dim=1))
 
 
-        return s_out, loss_distill
+        return s_out, loss_distill2, loss_distill
