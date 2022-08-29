@@ -94,14 +94,13 @@ class ASPP(nn.Module):
         x5 = self.global_avg_pool(x)
         x5 = F.interpolate(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
         x = torch.cat((x1, x2, x3, x4, x5), dim=1)
-        feat = x
 
         x = self.conv1(x)
         x = self.bn1(x)
         feat1 = x
         x = self.relu(x)
 
-        return [feat1, feat], x
+        return [feat1], x
 
     def _init_weight(self):
         for m in self.modules():
