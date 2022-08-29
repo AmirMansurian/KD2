@@ -3,8 +3,24 @@ import torch.nn as nn
 import torch.nn.functional as F
 from scipy.stats import norm
 import scipy
-
 import math
+
+
+
+def L2(f_):
+    return (((f_**2).sum(dim=1))**0.5).reshape(f_.shape[0],1,f_.shape[2],f_.shape[3]) + 1e-8
+
+def similarity(feat):
+    feat = feat.float()
+    tmp = L2(feat).detach()
+    feat = feat/tmp
+    feat = feat.reshape(feat.shape[0],feat.shape[1],-1)
+    return torch.einsum('icm,icn->imn', [feat, feat])
+
+def sim_dis_compute(f_S, f_T):
+    sim_err = ((similarity(f_T) - similarity(f_S))**2)/((f_T.shape[-1]*f_T.shape[-2])**2)/f_T.shape[0]
+    sim_dis = sim_err.sum()
+    return sim_dis
 
 def distillation_loss(source, target, margin):
     target = torch.max(target, margin)
@@ -62,8 +78,9 @@ class Distiller(nn.Module):
         self.t_net = t_net
         self.s_net = s_net
 
-        self.loss_divider = [8, 4, 2, 1, 1, 4*4]
+        self.criterion = sim_dis_compute
         self.temperature = 1
+        self.scale = 0.5
 
     def forward(self, x):
 
@@ -74,10 +91,17 @@ class Distiller(nn.Module):
         feat_num = len(t_feats)
         
         loss_distill = 0
-        TF = F.normalize(t_feats[5].pow(2).mean(1)) 
-        SF = F.normalize(s_feats[5].pow(2).mean(1)) 
-        temp = (TF - SF).pow(2).mean()
-        loss_distill += temp
+        feat_T = t_feats[4]
+        feat_S = s_feats[4]
+        total_w, total_h = feat_T.shape[2], feat_T.shape[3]
+        patch_w, patch_h = int(total_w*self.scale), int(total_h*self.scale)
+        maxpool = nn.MaxPool2d(kernel_size=(patch_w, patch_h), stride=(patch_w, patch_h), padding=0, ceil_mode=True) # change
+        loss_distill = self.criterion(maxpool(feat_S), maxpool(feat_T))
+        
+        #TF = F.normalize(t_feats[5].pow(2).mean(1)) 
+        #SF = F.normalize(s_feats[5].pow(2).mean(1)) 
+        #temp = (TF - SF).pow(2).mean()
+        #loss_distill += temp
         #print('########################################')
         #for i in range(len(t_feats)):
          # TF = F.normalize(t_feats[i].pow(2).mean(1)) 
